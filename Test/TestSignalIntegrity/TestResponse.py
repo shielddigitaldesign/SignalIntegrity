@@ -446,18 +446,24 @@ class TestResponse(unittest.TestCase,si.test.ResponseTesterHelper,si.test.SParam
         frNoDC=si.fd.FrequencyResponse(fr.Frequencies()[2:],fr.Values()[2:])
         frDCrestored=frNoDC.Resample(fr.FrequencyList())
         self.assertEqual(fr, frDCrestored, 'Two point DC point restore failed')
+
+    @unittest.SkipTest
     def testRestoreCable1points(self):
         PointsMissing=1
         spCable=si.sp.SParameterFile(r'H:\Projects\Oyster\DCPointExtrapolation\C_1_1_Response.s1p').EnforceCausality()
         spCableNoDC=si.sp.SParameters(spCable.m_f[PointsMissing:],spCable.m_d[PointsMissing:])
         spCableDCRestored=spCableNoDC.Resample(spCable.m_f).WriteToFile(r'H:\Projects\Oyster\DCPointExtrapolation\C_1_1_ResponseDCRestored.s1p')
         self.assertTrue(self.SParametersAreEqual(spCable,spCableDCRestored))
+    
+    @unittest.SkipTest
     def testRestoreCable2points(self):
         PointsMissing=2
         spCable=si.sp.SParameterFile(r'H:\Projects\Oyster\DCPointExtrapolation\C_1_1_Response.s1p')
         spCableNoDC=si.sp.SParameters(spCable.m_f[PointsMissing:],spCable.m_d[PointsMissing:])
         spCableDCRestored=spCableNoDC.Resample(spCable.m_f).WriteToFile(r'H:\Projects\Oyster\DCPointExtrapolation\C_1_1_ResponseDCRestored2.s1p')
         self.assertTrue(self.SParametersAreEqual(spCable,spCableDCRestored))
+    
+    @unittest.SkipTest
     def testRestoreCable3points(self):
         PointsMissing=3
         spCable=si.sp.SParameterFile(r'H:\Projects\Oyster\DCPointExtrapolation\C_1_1_Response.s1p')
@@ -465,6 +471,15 @@ class TestResponse(unittest.TestCase,si.test.ResponseTesterHelper,si.test.SParam
         spCableDCRestored=spCableNoDC.Resample(spCable.m_f).WriteToFile(r'H:\Projects\Oyster\DCPointExtrapolation\C_1_1_ResponseDCRestored3.s1p')
         self.assertTrue(self.SParametersAreEqual(spCable,spCableDCRestored))
 
+    @unittest.SkipTest
+    def testRestoreCable5points(self):
+        PointsMissing=1
+        spCable=si.sp.SParameterFile('cable.s2p').Resample(si.fd.EvenlySpacedFrequencyList(20e9,800)).EnforceCausality()
+        spCableNoDC=si.sp.SParameters(spCable.m_f[PointsMissing:],spCable.m_d[PointsMissing:])
+        spCableDCRestored=spCableNoDC.Resample(spCable.m_f).WriteToFile('cableDCRestored')
+        self.assertTrue(self.SParametersAreEqual(spCable,spCableDCRestored))
+
+    @unittest.SkipTest
     def testRestoreCable5points2(self):
         PointsMissing=5
         spCable=si.sp.SParameterFile(r'H:\Projects\Oyster\DCPointExtrapolation\C_1_1_Response.s1p')
@@ -472,6 +487,7 @@ class TestResponse(unittest.TestCase,si.test.ResponseTesterHelper,si.test.SParam
         spCableDCRestored=spCableNoDC.Resample(spCable.m_f).WriteToFile(r'H:\Projects\Oyster\DCPointExtrapolation\C_1_1_ResponseDCRestored5.s1p')
         self.assertTrue(self.SParametersAreEqual(spCable,spCableDCRestored))
     
+    @unittest.SkipTest
     def testRestoreIdealShort(self):
         PointsMissing=4
         spCable=si.sp.SParameterFile(r'H:\Projects\Oyster\DCPointExtrapolation\SimulatedShort_Lossless_2ns.s1p') #.EnforceCausality()
@@ -480,6 +496,7 @@ class TestResponse(unittest.TestCase,si.test.ResponseTesterHelper,si.test.SParam
         spCableDCRestored=spCableNoDC.Resample(spCable.m_f).WriteToFile(r'H:\Projects\Oyster\DCPointExtrapolation\SimulatedShort_Lossless_2ns_causal_dcRestored' + str(PointsMissing))
         self.assertTrue(self.SParametersAreEqual(spCable,spCableDCRestored))
         
+    @unittest.SkipTest
     def testRestoreIdealShort16K(self):
         PointsMissing=1
         fname = r'H:\Projects\Oyster\DCPointExtrapolation\SimulatedShort_Lossless_2ns_16K'  #.s1p

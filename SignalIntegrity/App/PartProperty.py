@@ -165,7 +165,7 @@ class PartPropertyCapacitance(PartProperty):
 
 class PartPropertyDissipationFactor(PartProperty):
     def __init__(self,df=0.,keyword='df',descriptionPrefix=''):
-        PartProperty.__init__(self,'dissipationfactor',type='float',unit=' ',keyword=keyword,description=descriptionPrefix+'dissipation factor',value=df,visible=False,keywordVisible=True)
+        PartProperty.__init__(self,'dissipationfactor',type='float',unit='',keyword=keyword,description=descriptionPrefix+'dissipation factor',value=df,visible=False,keywordVisible=True)
 
 class PartPropertyESR(PartProperty):
     def __init__(self,esr=0.,keyword='esr',descriptionPrefix=''):
@@ -182,6 +182,10 @@ class PartPropertyConductance(PartProperty):
 class PartPropertyPartName(PartPropertyReadOnly):
     def __init__(self,partName=''):
         PartPropertyReadOnly.__init__(self,'type',type='string',unit=None,keyword='partname',description='part type',value=partName,hidden=True)
+
+class PartPropertyHelp(PartPropertyReadOnly):
+    def __init__(self,helpstr=''):
+        PartPropertyReadOnly.__init__(self,'type',type='string',unit=None,keyword='help',description='help',value=helpstr,hidden=True)
 
 class PartPropertyCategory(PartPropertyReadOnly):
     def __init__(self,category=''):
@@ -274,6 +278,10 @@ class PartPropertyCharacteristicImpedance(PartProperty):
 class PartPropertySections(PartProperty):
     def __init__(self,sections=1):
         PartProperty.__init__(self,'sections',type='int',unit='',keyword='sect',description='sections',value=sections,visible=True,keywordVisible=False)
+
+class PartPropertyScale(PartProperty):
+    def __init__(self,scale=1):
+        PartProperty.__init__(self,'scale',type='float',unit='',keyword='scale',description='scale',value=scale,visible=False,keywordVisible=True)
 
 class PartPropertyWeight(PartProperty):
     def __init__(self,weight=1.0):

@@ -17,6 +17,7 @@ SignalIntegrityApp.py
 # You should have received a copy of the GNU General Public License along with this program.
 # If not, see <https://www.gnu.org/licenses/>
 import sys
+
 if sys.version_info.major < 3:
     import Tkinter as tk
     import tkFont as font
@@ -33,6 +34,7 @@ import os
 import matplotlib
 matplotlib.use('TkAgg')
 
+from SignalIntegrity.App.ToSI import ToSI
 from SignalIntegrity.App.PartPicture import PartPicture
 from SignalIntegrity.App.PartProperty import PartPropertyReferenceDesignator
 from SignalIntegrity.App.Device import DeviceList,DeviceListUnknown,DeviceListSystem
@@ -43,6 +45,7 @@ from SignalIntegrity.App.Schematic import Drawing
 from SignalIntegrity.App.Simulator import Simulator
 from SignalIntegrity.App.NetList import NetListDialog
 from SignalIntegrity.App.SParameterViewerWindow import SParametersDialog
+from SignalIntegrity.App.PostProcessingDialog import PostProcessingDialog
 from SignalIntegrity.App.Files import FileParts,ConvertFileNameToRelativePath
 from SignalIntegrity.App.History import History
 from SignalIntegrity.App.MenuSystemHelpers import Doer,StatusBar
@@ -133,12 +136,14 @@ class SignalIntegrityApp(tk.Frame):
         self.PanDoer = Doer(self.onPan).AddHelpElement('Control-Help:Pan')
         # ------
         self.CalculationPropertiesDoer = Doer(self.onCalculationProperties).AddHelpElement('Control-Help:Calculation-Properties')
+        self.PostProcessingDoer = Doer(self.onPostProcessing).AddHelpElement('Control-Help:Post-Processing')
         self.SParameterViewerDoer = Doer(self.onSParameterViewer).AddHelpElement('Control-Help:S-parameter-Viewer')
         self.CalculateDoer = Doer(self.onCalculate).AddHelpElement('Control-Help:Calculate-tk.Button')
         self.CalculateSParametersDoer = Doer(self.onCalculateSParameters).AddHelpElement('Control-Help:Calculate-S-parameters')
         self.SimulateDoer = Doer(self.onSimulate).AddHelpElement('Control-Help:Simulate')
         self.VirtualProbeDoer = Doer(self.onVirtualProbe).AddHelpElement('Control-Help:Virtual-Probe')
         self.DeembedDoer = Doer(self.onDeembed).AddHelpElement('Control-Help:Deembed')
+        self.RLGCDoer = Doer(self.onRLGC).AddHelpElement('Control-Help:RLGC-Fit')
         # ------
         self.HelpDoer = Doer(self.onHelp).AddHelpElement('Control-Help:Open-Help-File')
         self.PreferencesDoer=Doer(self.onPreferences).AddHelpElement('Control-Help:Preferences')
@@ -217,12 +222,14 @@ class SignalIntegrityApp(tk.Frame):
         CalcMenu=tk.Menu(self)
         TheMenu.add_cascade(label='Calculate',menu=CalcMenu,underline=0)
         self.CalculationPropertiesDoer.AddMenuElement(CalcMenu,label='Calculation Properties',underline=12)
+        self.PostProcessingDoer.AddMenuElement(CalcMenu,label='Post-Processing',underline=1)
         self.SParameterViewerDoer.AddMenuElement(CalcMenu,label='S-parameter Viewer',underline=12)
         CalcMenu.add_separator()
         self.CalculateSParametersDoer.AddMenuElement(CalcMenu,label='Calculate S-parameters',underline=0)
         self.SimulateDoer.AddMenuElement(CalcMenu,label='Simulate',underline=0)
         self.VirtualProbeDoer.AddMenuElement(CalcMenu,label='Virtual Probe',underline=9)
         self.DeembedDoer.AddMenuElement(CalcMenu,label='Deembed',underline=0)
+        self.RLGCDoer.AddMenuElement(CalcMenu,label='RLGC Fit',underline=5)
         # ------
         HelpMenu=tk.Menu(self)
         TheMenu.add_cascade(label='Help',menu=HelpMenu,underline=0)
@@ -381,6 +388,7 @@ class SignalIntegrityApp(tk.Frame):
         if filename is None:
             return
         SignalIntegrity.App.Project=ProjectFile()
+        SignalIntegrity.App.Project['Drawing.DrawingProperties.Grid']=SignalIntegrity.App.Preferences['Appearance.InitialGrid']
         self.Drawing.InitFromProject()
         self.Drawing.DrawSchematic()
         self.history.Event('new project')
@@ -486,9 +494,12 @@ class SignalIntegrityApp(tk.Frame):
             return False
         self.OpenProjectFile(SignalIntegrity.App.Preferences.GetLastFileOpened(3))
 
+    def NetListText(self):
+        return self.Drawing.schematic.NetList().Text()+SignalIntegrity.App.Project['PostProcessing'].NetListLines()
+
     def onExportNetlist(self):
         self.Drawing.stateMachine.Nothing()
-        NetListDialog(self,self.Drawing.schematic.NetList().Text())
+        NetListDialog(self,self.NetListText())
 
     def onExportTpX(self):
         from SignalIntegrity.App.TpX import TpX
@@ -522,23 +533,8 @@ class SignalIntegrityApp(tk.Frame):
         self.Drawing.stateMachine.Nothing()
         dpd=DevicePickerDialog(self,deviceList)
         if dpd.result != None:
-            if deviceList[dpd.result]['partname'].GetValue() == 'Port':
-                self.onAddPort()
-                return
-            else:
-                devicePicked=copy.deepcopy(deviceList[dpd.result])
-                devicePicked.AddPartProperty(PartPropertyReferenceDesignator(''))
-                defaultProperty = devicePicked['defref']
-                if defaultProperty != None:
-                    defaultPropertyValue = defaultProperty.GetValue()
-                    uniqueReferenceDesignator = self.Drawing.schematic.NewUniqueReferenceDesignator(defaultPropertyValue)
-                    if uniqueReferenceDesignator != None:
-                        devicePicked['ref'].SetValueFromString(uniqueReferenceDesignator)
-                dpe=DevicePropertiesDialog(self,devicePicked)
-            if dpe.result != None:
-                self.Drawing.partLoaded = dpe.result
-                self.Drawing.stateMachine.PartLoaded()
-
+            devicePicked=copy.deepcopy(deviceList[dpd.result])
+            self.AddSpecificPart(devicePicked)
     def onDeletePart(self):
         self.Drawing.DeleteSelectedDevice()
     def onDeleteSelected(self):
@@ -601,7 +597,7 @@ class SignalIntegrityApp(tk.Frame):
     def onAddStim(self):
         self.AddSpecificPart(DeviceStim())
 
-    def AddSpecificPart(self,part):
+    def AddSpecificPart(self,part,popDialog=True):
         self.Drawing.stateMachine.Nothing()
         devicePicked=part
         devicePicked.AddPartProperty(PartPropertyReferenceDesignator(''))
@@ -611,20 +607,25 @@ class SignalIntegrityApp(tk.Frame):
             uniqueReferenceDesignator = self.Drawing.schematic.NewUniqueReferenceDesignator(defaultPropertyValue)
             if uniqueReferenceDesignator != None:
                 devicePicked['ref'].SetValueFromString(uniqueReferenceDesignator)
-        dpe=DevicePropertiesDialog(self,devicePicked)
-        if dpe.result != None:
-            self.Drawing.partLoaded = dpe.result
+        if popDialog:
+            dpe=DevicePropertiesDialog(self,devicePicked)
+            if dpe.result != None:
+                part=dpe.result
+        if not part is None:
+            self.Drawing.partLoaded = part
             self.Drawing.stateMachine.PartLoaded()
 
     def onZoomIn(self):
         drawingPropertiesProject=SignalIntegrity.App.Project['Drawing.DrawingProperties']
         drawingPropertiesProject['Grid']=drawingPropertiesProject['Grid']+1.
         self.Drawing.DrawSchematic()
+        self.statusbar.set('Zoomed to grid: '+str(drawingPropertiesProject['Grid']))
 
     def onZoomOut(self):
         drawingPropertiesProject=SignalIntegrity.App.Project['Drawing.DrawingProperties']
         drawingPropertiesProject['Grid'] = max(1,drawingPropertiesProject['Grid']-1.)
         self.Drawing.DrawSchematic()
+        self.statusbar.set('Zoomed to grid: '+str(drawingPropertiesProject['Grid']))
 
     def onPan(self):
         self.Drawing.stateMachine.Panning()
@@ -638,9 +639,9 @@ class SignalIntegrityApp(tk.Frame):
     def onDeleteSelectedWire(self):
         self.Drawing.DeleteSelectedWire()
 
-    def onCalculateSParameters(self):
+    def CalculateSParameters(self):
         self.Drawing.stateMachine.Nothing()
-        netList=self.Drawing.schematic.NetList().Text()
+        netList=self.Drawing.schematic.NetList().Text()+SignalIntegrity.App.Project['PostProcessing'].NetListLines()
         import SignalIntegrity.Lib as si
         cacheFileName=None
         if SignalIntegrity.App.Preferences['Cache.CacheResults']:
@@ -657,8 +658,67 @@ class SignalIntegrityApp(tk.Frame):
             sp=progressDialog.GetResult()
         except si.SignalIntegrityException as e:
             messagebox.showerror('S-parameter Calculator',e.parameter+': '+e.message)                
+            return None
+        return sp
+
+    def onCalculateSParameters(self):
+        sp=self.CalculateSParameters()
+        if sp is None:
             return
         SParametersDialog(self,sp,filename=self.fileparts.FullFilePathExtension('s'+str(sp.m_P)+'p'))
+
+    def onPostProcessing(self):
+        PostProcessingDialog(self)
+
+    def PrintProgress(self,iteration):
+        self.statusbar.set('Fitting - iteration:'+str(self.m_fitter.ccm._IterationsTaken)+' mse:'+str(self.m_fitter.m_mse))
+
+    def PlotResult(self,iteration):
+        self.PrintProgress(iteration)
+        return
+
+    def onRLGC(self):
+        import SignalIntegrity.Lib as si
+        sp=self.CalculateSParameters()
+        if sp is None:
+            return
+        stepResponse=sp.FrequencyResponse(2,1).ImpulseResponse().Integral()
+        threshold=(stepResponse[len(stepResponse)-1]+stepResponse[0])/2.0
+        for k in range(len(stepResponse)):
+            if stepResponse[k]>threshold: break
+        dly=stepResponse.Times()[k]
+        rho=sp.FrequencyResponse(1,1).ImpulseResponse().Integral(scale=False).Measure(dly)
+        Z0=sp.m_Z0*(1.+rho)/(1.-rho)
+        L=dly*Z0; C=dly/Z0; guess=[0.,L,0.,C,0.,0.]
+        #pragma: silent exclude
+        self.plotInitialized=False
+        #pragma: include
+        self.m_fitter=si.fit.RLGCFitter(sp,guess,self.PlotResult)
+        #print(self.m_fitter.Results())
+        (R,L,G,C,Rse,df)=[r[0] for r in self.m_fitter.Solve().Results()]
+#         print "series resistance: "+ToSI(R,'ohm')
+#         print "series inductance: "+ToSI(L,'H')
+#         print "shunt conductance: "+ToSI(G,'S')
+#         print "shunt capacitance: "+ToSI(C,'F')
+#         print "skin-effect resistance: "+ToSI(Rse,'ohm/sqrt(Hz)')
+#         print "dissipation factor: "+ToSI(df,'')
+        fitsp=si.sp.SParameters(sp.f(),[s for s in si.sp.dev.TLineTwoPortRLGC(sp.f(),R,Rse,L,G,C,df,sp.m_Z0)])
+        SParametersDialog(self,fitsp,filename=self.fileparts.FullFilePathExtension('s'+str(sp.m_P)+'p'))
+
+        for deviceToCheck in DeviceList:
+            if deviceToCheck['partname'].GetValue()=='Telegrapher':
+                if deviceToCheck['ports'].GetValue()==2:
+                    device=copy.deepcopy(deviceToCheck)
+                    break
+        
+        device['r'].SetValueFromString(str(R)); device['r']['KeywordVisible']=True; device['r']['Visible']=True
+        device['l'].SetValueFromString(str(L)); device['l']['KeywordVisible']=True; device['l']['Visible']=True
+        device['g'].SetValueFromString(str(G)); device['g']['KeywordVisible']=True; device['g']['Visible']=True
+        device['c'].SetValueFromString(str(C)); device['c']['KeywordVisible']=True; device['c']['Visible']=True
+        device['rse'].SetValueFromString(str(Rse)); device['rse']['KeywordVisible']=True; device['rse']['Visible']=True
+        device['df'].SetValueFromString(str(df)); device['df']['KeywordVisible']=True; device['df']['Visible']=True
+        device['sect']['KeywordVisible']=False; device['sect']['Visible']=False
+        self.AddSpecificPart(device,popDialog=False)
 
     def onCalculationProperties(self):
         self.Drawing.stateMachine.Nothing()
@@ -681,7 +741,7 @@ class SignalIntegrityApp(tk.Frame):
 
     def onDeembed(self):
         self.Drawing.stateMachine.Nothing()
-        netList=self.Drawing.schematic.NetList().Text()
+        netList=self.Drawing.schematic.NetList().Text()+SignalIntegrity.App.Project['PostProcessing'].NetListLines()
         import SignalIntegrity.Lib as si
         cacheFileName=None
         if SignalIntegrity.App.Preferences['Cache.CacheResults']:
@@ -784,6 +844,7 @@ class SignalIntegrityApp(tk.Frame):
             self.VirtualProbeDoer.Activate(True)
             self.SimulateDoer.Activate(True)
             self.DeembedDoer.Activate(True)
+            self.RLGCDoer.Activate(True)
             # ------
             self.HelpDoer.Activate(True)
             self.ControlHelpDoer.Activate(True)
