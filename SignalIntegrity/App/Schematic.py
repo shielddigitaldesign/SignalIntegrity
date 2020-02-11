@@ -936,14 +936,17 @@ class DrawingStateMachine(object):
             self.Unlock()
     def onMouseButton1Release_Panning(self,event):
         if not self.Locked():
+            self.parent.parent.history.Event('Pan')
             self.Nothing()
             self.Unlock()
     def onMouseButton3Release_Panning(self,event):
         if not self.Locked():
+            self.parent.parent.history.Event('Pan')
             self.Nothing()
             self.Unlock()
     def onMouseButton1Double_Panning(self,event):
         if not self.Locked():
+            self.parent.parent.history.Event('Pan')
             self.Nothing()
             self.Unlock()
     def onMouseMotion_Panning(self,event):
@@ -966,6 +969,7 @@ class DrawingStateMachine(object):
             self.Unlock()
     def onEscapeKey_Panning(self,event):
         if not self.Locked():
+            self.parent.parent.history.Event('Pan')
             self.Nothing()
             self.Unlock()
 
@@ -1549,8 +1553,6 @@ class Drawing(tk.Frame):
             return canvas
         drawingPropertiesProject=SignalIntegrity.App.Project['Drawing.DrawingProperties']
         if not canvas is None and hasattr(self, 'Drawing'):
-            drawingPropertiesProject['Width']=self.Drawing.canvas.winfo_width()
-            drawingPropertiesProject['Height']=self.Drawing.canvas.winfo_height()
             drawingPropertiesProject['Geometry']=self.root.geometry()
         grid=drawingPropertiesProject['Grid']
         originx=drawingPropertiesProject['Originx']
@@ -1758,7 +1760,7 @@ class Drawing(tk.Frame):
         # the canvas and geometry must be set prior to the remainder of the schematic initialization
         # otherwise it will not be the right size.  In the past, the xml happened to have the drawing
         # properties first, which made it work, but it was an accident.
-        self.canvas.config(width=drawingProperties['Width'],height=drawingProperties['Height'])
+        #self.canvas.config(width=drawingProperties['Width'],height=drawingProperties['Height'])
         self.parent.root.geometry(drawingProperties['Geometry'].split('+')[0])
         self.schematic = Schematic()
         self.schematic.InitFromProject()

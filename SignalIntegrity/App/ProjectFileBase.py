@@ -201,7 +201,7 @@ class XMLConfiguration(object):
         lines=[]
         if self.write:
             lines=lines+[indent+'<'+self.name+'>']
-            for item in self.dict:
+            for item in [key for key in sorted(self.dict.keys())]:
                 lines=lines+self.dict[item].OutputXML(indent+ProjectFileBase.indent)
             lines=lines+[indent+'</'+self.name+'>']
         return lines
@@ -284,7 +284,7 @@ class ProjectFileBase(object):
     def OutputXML(self):
         lines=[]
         lines=lines+['<Project>']
-        for item in self.dict:
+        for item in [key for key in sorted(self.dict.keys())]:
             lines=lines+self.dict[item].OutputXML(self.indent)
         lines=lines+['</Project>']
         for line in lines:
@@ -302,16 +302,55 @@ class ProjectFileBase(object):
             self.dict[item].SetUnchanged()
         return self
 
+    def LinesToWrite(self):
+        lines=[]
+        lines=lines+['<Project>']
+        for item in [key for key in sorted(self.dict.keys())]:
+            lines=lines+self.dict[item].OutputXML(self.indent)
+        lines=lines+['</Project>']
+        lines=["%s\n" % l for l in lines]
+        return lines
+    
+    def LinesInFile(self,filename):
+        if not filename.split('.')[-1] == self.ext:
+            filename=filename+'.'+self.ext
+        with open(filename,'r') as f:
+            lines=f.readlines()
+        return lines
+
+    def CheckFileChanged(self,filename):
+        linesInFile=self.LinesInFile(filename)
+        try:
+            linesInProject=self.LinesToWrite()
+            if len(linesInProject)!=len(linesInFile):
+                return True
+            # this mess is for the geometry, which also contains the location on the screen which
+            # should not be compared
+            for (lineInProject,lineInFile) in zip(linesInProject,linesInFile):
+                if ('<Geometry>' in lineInProject)\
+                    and ('</Geometry>' in lineInProject)\
+                    and ('<Geometry>' in lineInFile)\
+                    and ('</Geometry>' in lineInFile):
+                    GeometryInProject=lineInProject.strip().replace('<Geometry>','').replace('</Geometry>','')
+                    GeometryInFile=lineInFile.strip().replace('<Geometry>','').replace('</Geometry>','')
+                    if '+' in GeometryInProject and '+' in GeometryInFile:
+                        DimInProject=GeometryInProject.split('+')[0]
+                        DimInFile=GeometryInFile.split('+')[0]
+                        if DimInProject != DimInFile:
+                            return True
+                    elif GeometryInProject != GeometryInFile:
+                        return True
+                elif lineInProject != lineInFile:
+                    return True
+            return False
+        except:
+            return True
+
     def Write(self,filename):
         if not filename.split('.')[-1] == self.ext:
             filename=filename+'.'+self.ext
-        lines=[]
-        lines=lines+['<Project>']
-        for item in self.dict:
-            lines=lines+self.dict[item].OutputXML(self.indent)
-        lines=lines+['</Project>']
         with open(filename,'w') as f:
-            f.writelines("%s\n" % l for l in lines)
+            f.writelines(self.LinesToWrite())
         self.SetUnchanged()
         return self
 

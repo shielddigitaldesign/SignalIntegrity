@@ -78,8 +78,8 @@ class SParametersDialog(tk.Toplevel):
             else:
                 self.title(title+': '+self.fileparts.FileNameTitle())
 
-        img = tk.PhotoImage(file=SignalIntegrity.App.IconsBaseDir+'AppIcon2.gif')
-        self.tk.call('wm', 'iconphoto', self._w, img)
+        self.img = tk.PhotoImage(file=SignalIntegrity.App.IconsBaseDir+'AppIcon2.gif')
+        self.tk.call('wm', 'iconphoto', self._w, self.img)
         self.protocol("WM_DELETE_WINDOW", self.onClosing)
 
         self.variableLineWidth = tk.BooleanVar()
@@ -263,7 +263,11 @@ class SParametersDialog(tk.Toplevel):
         self.bottomRightlabel = tk.Label(bottomRightFrame,fg='black')
         self.bottomRightlabel.pack(fill=tk.X)
 
-        self.topLeftFigure=Figure(figsize=(5,2), dpi=100)
+        plotWidth=SignalIntegrity.App.Preferences['Appearance.PlotWidth']
+        plotHeight=SignalIntegrity.App.Preferences['Appearance.PlotHeight']
+        plotDPI=SignalIntegrity.App.Preferences['Appearance.PlotDPI']
+
+        self.topLeftFigure=Figure(figsize=(plotWidth,plotHeight), dpi=plotDPI)
         self.topLeftPlot=self.topLeftFigure.add_subplot(111)
         self.topLeftCanvas=FigureCanvasTkAgg(self.topLeftFigure, master=topLeftFrame)
         self.topLeftCanvas.get_tk_widget().pack(side=tk.TOP, fill=tk.X, expand=1)
@@ -272,7 +276,7 @@ class SParametersDialog(tk.Toplevel):
         self.topLeftCanvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
         self.topLeftToolbar.pan()
 
-        self.topRightFigure=Figure(figsize=(5,2), dpi=100)
+        self.topRightFigure=Figure(figsize=(plotWidth,plotHeight), dpi=plotDPI)
         self.topRightPlot=self.topRightFigure.add_subplot(111)
         self.topRightCanvas=FigureCanvasTkAgg(self.topRightFigure, master=topRightFrame)
         self.topRightCanvas.get_tk_widget().pack(side=tk.TOP, fill=tk.X, expand=1)
@@ -286,7 +290,7 @@ class SParametersDialog(tk.Toplevel):
         self.delayViewerProperty=CalculationPropertySI(self.topRightCanvasControlsFrame,'Delay',self.onDelayEntered,None,None,None,'s')
         self.delayViewerProperty.label.config(width=10)
 
-        self.bottomLeftFigure=Figure(figsize=(5,2), dpi=100)
+        self.bottomLeftFigure=Figure(figsize=(plotWidth,plotHeight), dpi=plotDPI)
         self.bottomLeftPlot=self.bottomLeftFigure.add_subplot(111)
         self.bottomLeftCanvas=FigureCanvasTkAgg(self.bottomLeftFigure, master=bottomLeftFrame)
         self.bottomLeftCanvas.get_tk_widget().pack(side=tk.TOP, fill=tk.X, expand=1)
@@ -295,7 +299,7 @@ class SParametersDialog(tk.Toplevel):
         self.bottomLeftCanvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
         self.bottomLeftToolbar.pan()
 
-        self.bottomRightFigure=Figure(figsize=(5,2), dpi=100)
+        self.bottomRightFigure=Figure(figsize=(plotWidth,plotHeight), dpi=plotDPI)
         self.bottomRightPlot=self.bottomRightFigure.add_subplot(111)
         self.bottomRightCanvas=FigureCanvasTkAgg(self.bottomRightFigure, master=bottomRightFrame)
         self.bottomRightCanvas.get_tk_widget().pack(side=tk.TOP, fill=tk.X, expand=1)
@@ -941,8 +945,8 @@ class SParametersDialog(tk.Toplevel):
             self.topLeftPlotProperties['MaxX']=max(x)
             self.topLeftPlotProperties['XInitialized']=True
         if not self.topLeftPlotProperties['YInitialized']:
-            self.topLeftPlotProperties['MinY']=max(min(y)-1.,-60.0)
-            self.topLeftPlotProperties['MaxY']=max(y)+1.
+            self.topLeftPlotProperties['MinY']=min(max(min(y)-1.,-60.0),max(y)+1.)
+            self.topLeftPlotProperties['MaxY']=max(max(min(y)-1.,-60.0),max(y)+1.)
             self.topLeftPlotProperties['YInitialized']=True
 
         if self.properties['Plot.LogScale']:
@@ -1091,25 +1095,25 @@ class SParametersDialog(tk.Toplevel):
                     self.bottomRightlabel.config(text='Impedance Profile')
                     self.bottomRightPlot.set_ylabel('impedance (Ohms)',fontsize=10)
                 elif self.properties['Plot.ShowExcessInductance']:
-                    maxy=(maxy-Z0)*Ts
-                    miny=(miny-Z0)*Ts
+                    maxy=(maxy-Z0)*Ts/2.
+                    miny=(miny-Z0)*Ts/2.
                     span=max(abs(maxy),abs(miny))
                     yLabel=ToSI(span,'H')[-2:]
                     yLabelDivisor=FromSI('1. '+yLabel,'H')
                     maxy=maxy/yLabelDivisor
                     miny=miny/yLabelDivisor
-                    y=[(yv-Z0)*Ts/yLabelDivisor for yv in y]
+                    y=[(yv-Z0)*Ts/2./yLabelDivisor for yv in y]
                     self.bottomRightlabel.config(text='Excess Inductance Profile')
                     self.bottomRightPlot.set_ylabel('Excess L ('+yLabel+')',fontsize=10)
                 elif self.properties['Plot.ShowExcessCapacitance']:
-                    maxy=(1./maxy-1./Z0)*Ts
-                    miny=(1./miny-1./Z0)*Ts
+                    maxy=(1./maxy-1./Z0)*Ts/2.
+                    miny=(1./miny-1./Z0)*Ts/2.
                     span=max(abs(maxy),abs(miny))
                     yLabel=ToSI(span,'F')[-2:]
                     yLabelDivisor=FromSI('1. '+yLabel,'F')
                     maxy=maxy/yLabelDivisor
                     miny=miny/yLabelDivisor
-                    y=[(1./yv-1./Z0)*Ts/yLabelDivisor for yv in y]
+                    y=[(1./yv-1./Z0)*Ts/2./yLabelDivisor for yv in y]
                     self.bottomRightlabel.config(text='Excess Capacitance Profile')
                     self.bottomRightPlot.set_ylabel('Excess C ('+yLabel+')',fontsize=10)
 

@@ -52,8 +52,8 @@ class SimulatorDialog(tk.Toplevel):
         self.parent=parent
         self.withdraw()
         self.title('Simulation')
-        img = tk.PhotoImage(file=SignalIntegrity.App.IconsBaseDir+'AppIcon2.gif')
-        self.tk.call('wm', 'iconphoto', self._w, img)
+        self.img = tk.PhotoImage(file=SignalIntegrity.App.IconsBaseDir+'AppIcon2.gif')
+        self.tk.call('wm', 'iconphoto', self._w, self.img)
         self.protocol("WM_DELETE_WINDOW", self.onClosing)
 
         # the Doers - the holder of the commands, menu elements, toolbar elements, and key bindings
@@ -124,11 +124,16 @@ class SimulatorDialog(tk.Toplevel):
         self.ControlHelpDoer.AddToolBarElement(ToolBarFrame,iconfile=iconsdir+'help-3.gif').Pack(side=tk.LEFT,fill=tk.NONE,expand=tk.NO)
 
         labelFrame = tk.Frame(self)
-        labelFrame.pack(side=tk.TOP,fill=tk.X,expand=tk.YES)
+        labelFrame.pack(side=tk.TOP,fill=tk.X,expand=tk.NO)
         self.plotLabel = tk.Label(labelFrame,fg='black')
         self.plotLabel.pack(fill=tk.X)
 
-        self.f = Figure(figsize=(6,4), dpi=100)
+        plotWidth=SignalIntegrity.App.Preferences['Appearance.PlotWidth']
+        plotHeight=SignalIntegrity.App.Preferences['Appearance.PlotHeight']
+        plotDPI=SignalIntegrity.App.Preferences['Appearance.PlotDPI']
+
+        self.f = Figure(figsize=(plotWidth,plotHeight), dpi=plotDPI)
+
         self.plt = self.f.add_subplot(111)
         self.plt.set_xlabel('time (ns)')
         self.plt.set_ylabel('amplitude')
@@ -137,7 +142,7 @@ class SimulatorDialog(tk.Toplevel):
         self.waveformNamesList=None
         self.canvas = FigureCanvasTkAgg(self.f, master=self)
         #canvas.show()
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.X, expand=1)
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=tk.YES)
 
         toolbar = NavigationToolbar2Tk( self.canvas, self )
         toolbar.update()

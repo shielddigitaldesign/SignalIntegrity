@@ -82,8 +82,8 @@ class SignalIntegrityApp(tk.Frame):
 
         self.root.title(__project__+' - '+__version__)
 
-        img = tk.PhotoImage(file=SignalIntegrity.App.IconsBaseDir+'AppIcon2.gif')
-        self.root.tk.call('wm', 'iconphoto', self.root._w, '-default', img)
+        self.img = tk.PhotoImage(file=SignalIntegrity.App.IconsBaseDir+'AppIcon2.gif')
+        self.root.tk.call('wm', 'iconphoto', self.root._w, '-default', self.img)
 
         Doer.helpKeys = HelpSystemKeys(SignalIntegrity.App.Preferences['OnlineHelp.RebuildHelpKeys'])
 
@@ -325,8 +325,6 @@ class SignalIntegrityApp(tk.Frame):
 
         try:
             self.Drawing.canvas.config(width=event.width-self.deltaWidth,height=event.height-self.deltaHeight)
-            SignalIntegrity.App.Project['Drawing.DrawingProperties.Width']=self.Drawing.canvas.winfo_width()
-            SignalIntegrity.App.Project['Drawing.DrawingProperties.Height']=self.Drawing.canvas.winfo_height()
             SignalIntegrity.App.Project['Drawing.DrawingProperties.Geometry']=self.root.geometry()
         except tk.TclError:
             pass
@@ -665,7 +663,7 @@ class SignalIntegrityApp(tk.Frame):
         sp=self.CalculateSParameters()
         if sp is None:
             return
-        SParametersDialog(self,sp,filename=self.fileparts.FullFilePathExtension('s'+str(sp.m_P)+'p'))
+        self.spd=SParametersDialog(self,sp,filename=self.fileparts.FullFilePathExtension('s'+str(sp.m_P)+'p'))
 
     def onPostProcessing(self):
         PostProcessingDialog(self)
@@ -932,6 +930,10 @@ class SignalIntegrityApp(tk.Frame):
         if self.Drawing.stateMachine.state == 'NoProject':
             return True
         if not SignalIntegrity.App.Preferences['ProjectFiles.AskToSaveCurrentFile']:
+            return True
+
+        filename=self.fileparts.AbsoluteFilePath()+'/'+self.fileparts.FileNameWithExtension(ext='.si')
+        if not SignalIntegrity.App.Project.CheckFileChanged(filename):
             return True
 
         doit =  messagebox.askyesnocancel('Wait....','Do you want to save the current project first?')
